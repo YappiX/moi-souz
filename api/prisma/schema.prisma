@@ -1,0 +1,123 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  fullName     String
+  avatarUrl    String?
+  memberNo     String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  memberships  Membership[]
+  posts        Post[]
+  comments     Comment[]
+  likes        Like[]
+  role         Role     @default(MEMBER)
+}
+
+enum Role {
+  SUPERADMIN
+  ORG_ADMIN
+  EDITOR
+  MEMBER
+}
+
+model UnionOrg {
+  id         String      @id @default(cuid())
+  name       String
+  inn        String?
+  ogrn       String?
+  email      String?
+  phone      String?
+  parentId   String?
+  parent     UnionOrg?   @relation("OrgToChildren", fields: [parentId], references: [id])
+  children   UnionOrg[]  @relation("OrgToChildren")
+  members    Membership[]
+  staff      Staff[]
+  createdAt  DateTime    @default(now())
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  status    MemberStatus @default(PENDING)
+  role      Role        @default(MEMBER)
+  user      User     @relation(fields: [userId], references: [id])
+  org       UnionOrg @relation(fields: [orgId], references: [id])
+}
+
+enum MemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  authorId  String
+  title     String
+  content   Json
+  imageUrl  String?
+  targetOrgIds String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+  likes     Like[]
+  published Boolean  @default(true)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Like {
+  id       String @id @default(cuid())
+  postId   String
+  userId   String
+  post     Post @relation(fields: [postId], references: [id])
+  user     User @relation(fields: [userId], references: [id])
+  @@unique([postId, userId])
+}
+
+model DiscountOffer {
+  id          String   @id @default(cuid())
+  partnerName String
+  title       String
+  description String
+  imageUrl    String?
+  validUntil  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model NotificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  platform  String
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Staff {
+  id      String   @id @default(cuid())
+  orgId   String
+  userId  String
+  title   String?
+  org     UnionOrg @relation(fields: [orgId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  @@unique([orgId, userId])
+}
